@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AVN Recommendations</title>
+    <link rel="stylesheet" href="list.css" />
+    <style>
+      .upload-button {
+        margin: 20px;
+        padding: 10px 20px;
+        background-color: yellow;
+        color: black;
+        border: none;
+        cursor: pointer;
+        font-size: 16px;
+      }
+      .gallery-container {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 20px;
+      }
+      .gallery {
+        width: 300px;
+        border: 1px solid white;
+        padding: 10px;
+        text-align: center;
+        position: relative;
+      }
+      .gallery img {
+        width: 100%;
+        height: auto;
+      }
+      .delete-button {
+        position: absolute;
+        top: 5px;
+        right: 10px;
+        background-color: red;
+        color: white;
+        border: none;
+        cursor: pointer;
+        padding: 5px 10px;
+        display: none;
+      }
+      .title {
+        color: black;
+        font-weight: bold;
+      }
+      .description {
+        max-height: 100px;
+        overflow-y: auto;
+        margin-top: 10px;
+        padding: 5px;
+      }
+    </style>
+
+    <!-- Add Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js"></script>
+  </head>
+  <body>
+    <button
+      class="upload-button"
+      id="uploadBtn"
+      onclick="passwordPromptForUpload()"
+    >
+      Upload
+    </button>
+    <h1>Recommendations</h1>
+    <div class="gallery-container" id="galleryContainer"></div>
+
+    <script>
+      // Firebase configuration
+      const firebaseConfig = {
+        apiKey: "YOUR_API_KEY",
+        authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+        projectId: "YOUR_PROJECT_ID",
+      };
+
+      // Initialize Firebase
+      const app = firebase.initializeApp(firebaseConfig);
+      const db = firebase.firestore();
+
+      const correctPassword = "penelopecarter123"; // Replace with your chosen password
+
+      function openUploadForm() {
+        window.open("upload.html", "_blank");
+      }
+
+      function addNewRecommendation(data) {
+        const galleryContainer = document.getElementById("galleryContainer");
+        galleryContainer.innerHTML = ""; // Clear existing items
+
+        data.forEach((item) => {
+          const galleryItem = document.createElement("div");
+          galleryItem.className = "gallery";
+
+          const imgElement = document.createElement("img");
+          imgElement.src = item.imageSrc;
+          imgElement.alt = item.title;
+
+          const titleElement = document.createElement("div");
+          titleElement.className = "title";
+          titleElement.textContent = item.title;
+
+          const descriptionElement = document.createElement("div");
+          descriptionElement.className = "description";
+          descriptionElement.textContent = item.description;
+
+          const linkElement = document.createElement("a");
+          linkElement.href = item.link;
+          linkElement.target = "_blank";
+          linkElement.textContent = `${item.title} LINK`;
+
+          const deleteButton = document.createElement("button");
+          deleteButton.className = "delete-button";
+          deleteButton.textContent = "Delete";
+          deleteButton.onclick = function () {
+            deleteRecommendation(item.id);
+          };
+
+          galleryItem.appendChild(deleteButton); // Append delete button first
+          galleryItem.appendChild(imgElement);
+          galleryItem.appendChild(titleElement);
+          galleryItem.appendChild(descriptionElement);
+          galleryItem.appendChild(linkElement);
+          galleryContainer.appendChild(galleryItem);
+        });
+
+        // Show delete buttons if authenticated
+        if (sessionStorage.getItem("authenticated") === "true") {
+          document.querySelectorAll(".delete-button").forEach((button) => {
+            button.style.display = "inline-block"; // Show delete buttons
+          });
+        }
+      }
+
+      function deleteRecommendation(id) {
+        db.collection("recommendations")
+          .doc(id)
+          .delete()
+          .then(() => {
+            loadRecommendations(); // Refresh the gallery display
+          })
+          .catch((error) => {
+            console.error("Error deleting recommendation: ", error);
+          });
+      }
+
+      function loadRecommendations() {
+        db.collection("recommendations")
+          .get()
+          .then((querySnapshot) => {
+            const recommendations = [];
+            querySnapshot.forEach((doc) => {
+              recommendations.push({ id: doc.id, ...doc.data() });
+            });
+            addNewRecommendation(recommendations);
+          });
+      }
+
+      function passwordPromptForUpload() {
+        const userPassword = prompt(
+          "Please enter the password to upload or delete:"
+        );
+        if (userPassword === correctPassword) {
+          sessionStorage.setItem("authenticated", "true");
+          loadRecommendations(); // Load recommendations to show delete buttons
+          openUploadForm();
+        } else {
+          alert("Incorrect password! You cannot upload.");
+        }
+      }
+
+      window.onload = function () {
+        loadRecommendations();
+      };
+    </script>
+  </body>
+</html>
